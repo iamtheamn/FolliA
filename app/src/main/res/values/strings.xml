@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">FolliA</string>
+    <string name="new_chat">Nouvelle conversation</string>
+    <string name="settings">Réglages</string>
+    <string name="type_message">Écrivez un message...</string>
+    <string name="send">Envoyer</string>
+    <string name="theme_light">Clair</string>
+    <string name="theme_dark">Sombre</string>
+    <string name="theme_amoled">AMOLED</string>
+    <string name="server_ip">IP du Serveur</string>
+    <string name="save">Sauvegarder</string>
+    <string name="chat_history">Historique</string>
+    <string name="appearance">Apparence</string>
+    <string name="accent_color">Couleur d\'accentuation</string>
+    <string name="server">Serveur</string>
+    <string name="language">Langue</string>
+    <string name="system">Système</string>
+    <string name="french">Français</string>
+    <string name="english">English</string>
+</resources>
