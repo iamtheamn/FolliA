@@ -30,7 +30,7 @@ Parce qu'il faut un peu de folie pour vouloir faire tourner une IA dans sa poche
 
 ### Installation
 1. Allez sur la page des **[Releases](../../releases)**.
-2. Téléchargez le dernier fichier `app-release.apk`.
+2. Téléchargez le dernier fichier `FolliA_v0.5.apk`.
 3. Installez l'APK sur votre appareil Android.
 4. Ouvrez **FollIA**, allez dans les Réglages ⚙️, et entrez l'adresse IP de votre serveur.
 
