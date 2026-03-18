@@ -34,9 +34,7 @@ Because it takes a little madness to want to run an AI in your pocket, but a lot
 3. Install the APK on your Android device.
 4. Open **FollIA**, go to Settings ⚙️, and enter your server's IP address.
 
-## 🗺️ Roadmap (Upcoming in v1.0)
-- [ ] Dedicated UI field to customize the Ollama Port.
-- [ ] Support for message Streaming (words appearing in real-time).
+## V1.0 comming soon with many changes !
 
 ## 📜 License
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
