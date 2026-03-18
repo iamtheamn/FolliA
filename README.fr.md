@@ -34,7 +34,7 @@ Parce qu'il faut un peu de folie pour vouloir faire tourner une IA dans sa poche
 3. Installez l'APK sur votre appareil Android.
 4. Ouvrez **FollIA**, allez dans les Réglages ⚙️, et entrez l'adresse IP de votre serveur.
 
-# La V1.0 arrive bientôt avec de nombreux changements !
+### La V1.0 arrive bientôt avec de nombreux changements !
 
 ## 📜 Licence
 Ce projet est sous licence **GNU General Public License v3.0** - voir le fichier [LICENSE](LICENSE) pour plus de détails.
