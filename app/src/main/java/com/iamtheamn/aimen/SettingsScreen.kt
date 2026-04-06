@@ -20,17 +20,20 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SettingsScreen(
     currentIp: String,
+    currentPort: String,
     appTheme: ThemeMode,
     currentLanguage: String,
     accentColor: Color,
     backgroundColor: Color,
     textColor: Color,
     onIpSaved: (String) -> Unit,
+    onPortSaved: (String) -> Unit,
     onThemeChanged: (ThemeMode) -> Unit,
     onLanguageChanged: (String) -> Unit,
     onColorChanged: (Color) -> Unit
 ) {
     var ipInput by remember { mutableStateOf(currentIp) }
+    var portInput by remember { mutableStateOf(currentPort) }
     var languageMenuExpanded by remember { mutableStateOf(false) }
 
     val colorPalette = listOf(
@@ -168,8 +171,30 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        OutlinedTextField(
+            value = portInput,
+            onValueChange = { portInput = it },
+            label = { Text("Port (Défaut: 11434)", color = Color.Gray) },
+            placeholder = { Text("11434", color = Color.Gray.copy(alpha = 0.6f)) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = accentColor,
+                unfocusedBorderColor = fieldBorderColor,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
+                focusedLabelColor = accentColor
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(
-            onClick = { onIpSaved(ipInput) },
+            onClick = {
+                onIpSaved(ipInput)
+                onPortSaved(portInput)
+            },
             colors = ButtonDefaults.buttonColors(containerColor = accentColor),
             modifier = Modifier
                 .fillMaxWidth()

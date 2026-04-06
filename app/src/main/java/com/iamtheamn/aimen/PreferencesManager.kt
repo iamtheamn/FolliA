@@ -16,6 +16,14 @@ class PreferencesManager(context: Context) {
         prefs.edit().putString("server_ip", ip).apply()
     }
 
+    fun getPort(): String {
+        return prefs.getString("server_port", "11434") ?: "11434"
+    }
+
+    fun savePort(port: String) {
+        prefs.edit().putString("server_port", port).apply()
+    }
+
     fun getTheme(): ThemeMode {
         val themeStr = prefs.getString("theme_mode", ThemeMode.DARK.name)
         return try {

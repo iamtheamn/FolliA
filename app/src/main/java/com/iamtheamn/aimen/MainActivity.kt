@@ -78,6 +78,7 @@ fun AIMenApp() {
 
     var currentScreen by remember { mutableStateOf("chat") }
     var savedIpAddress by remember { mutableStateOf(prefs.getIpAddress()) }
+    var savedPort by remember { mutableStateOf(prefs.getPort()) }
     var appTheme by remember { mutableStateOf(prefs.getTheme()) }
     var appLanguage by remember { mutableStateOf(prefs.getLanguage()) }
     var accentColor by remember { mutableStateOf(prefs.getColor()) }
@@ -227,6 +228,7 @@ fun AIMenApp() {
                     "chat" -> ChatScreen(
                         viewModel = chatViewModel,
                         currentIp = savedIpAddress,
+                        currentPort = savedPort,
                         appTheme = appTheme,
                         accentColor = accentColor,
                         backgroundColor = backgroundColor,
@@ -234,6 +236,7 @@ fun AIMenApp() {
                     )
                     "settings" -> SettingsScreen(
                         currentIp = savedIpAddress,
+                        currentPort = savedPort,
                         appTheme = appTheme,
                         currentLanguage = appLanguage,
                         accentColor = accentColor,
@@ -243,6 +246,10 @@ fun AIMenApp() {
                             savedIpAddress = newIp
                             prefs.saveIpAddress(newIp)
                             Toast.makeText(context, context.getString(R.string.save), Toast.LENGTH_SHORT).show()
+                        },
+                        onPortSaved = { newPort ->
+                            savedPort = newPort
+                            prefs.savePort(newPort)
                         },
                         onThemeChanged = { newTheme ->
                             appTheme = newTheme
