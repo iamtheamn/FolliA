@@ -6,10 +6,17 @@
 
 Parce qu'il faut un peu de folie pour vouloir faire tourner une IA dans sa poche, mais beaucoup de sérieux pour le faire de manière 100% privée.
 
+## 📸 Captures d'écran
+
+<p align="center">
+  <img src="images/chat.jpg" width="250" alt="Interface de chat FollIA" style="margin-right: 20px;">
+  <img src="images/settings.jpg" width="250" alt="Paramètres FollIA">
+</p>
+
 ## ✨ Fonctionnalités Principales
 - **100% Privé (Edge AI)** : Tout le traitement reste sur votre réseau local ou VPN. Pas de cloud, pas d'abonnements, pas de collecte de données.
 - **Détection Automatique Intelligente** : Entrez l'IP de votre serveur, et FollIA scanne et se connecte automatiquement à l'IA active sur votre machine (Llama3, Phi, Mistral...). Aucune configuration manuelle du modèle n'est requise !
-- **Compatible Tailscale / VPN** : Accédez à votre serveur domestique (PC, Raspberry Pi) de n'importe où en utilisant votre connexion 5G et un VPN comme Tailscale.
+- **Compatible VPN** : Accédez à votre serveur domestique (PC, Raspberry Pi) de n'importe où en utilisant votre connexion 5G et un VPN.
 - **Interface Personnalisable** : Adoptez votre propre style avec les thèmes Clair, Sombre ou véritable AMOLED, et plusieurs couleurs d'accentuation.
 
 ## 📱 Configuration Minimale
@@ -30,7 +37,7 @@ Parce qu'il faut un peu de folie pour vouloir faire tourner une IA dans sa poche
 
 ### Installation
 1. Allez sur la page des **[Releases](../../releases)**.
-2. Téléchargez le dernier fichier `app-release.apk`.
+2. Téléchargez le dernier fichier `FolliA_v0.5.apk`.
 3. Installez l'APK sur votre appareil Android.
 4. Ouvrez **FollIA**, allez dans les Réglages ⚙️, et entrez l'adresse IP de votre serveur.
 

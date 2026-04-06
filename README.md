@@ -6,10 +6,17 @@
 
 Because it takes a little madness to want to run an AI in your pocket, but a lot of seriousness to do it 100% privately.
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="images/chat.jpg" width="250" alt="FollIA Chat Interface" style="margin-right: 20px;">
+  <img src="images/settings.jpg" width="250" alt="FollIA Settings">
+</p>
+
 ## ✨ Key Features
 - **100% Private (Edge AI)**: All processing stays on your local network or VPN. No cloud, no subscriptions, no data harvesting.
 - **Smart Auto-Detection**: Enter your server's IP, and FollIA automatically scans and connects to the active LLM on your machine (Llama3, Phi, Mistral...). No manual model configuration needed!
-- **Tailscale / VPN Friendly**: Access your home server (PC, Raspberry Pi) from anywhere using your 5G connection and a VPN like Tailscale.
+- **VPN Friendly**: Access your home server (PC, Raspberry Pi) from anywhere using your 5G connection and a VPN.
 - **Custom UI**: Make it yours with Light, Dark, or true AMOLED themes, and multiple accent colors.
 
 ## 📱 Minimum Requirements
@@ -30,11 +37,11 @@ Because it takes a little madness to want to run an AI in your pocket, but a lot
 
 ### Installation
 1. Go to the **[Releases](../../releases)** page.
-2. Download the latest `app-release.apk`.
+2. Download the latest `FolliA_v0.5.apk`.
 3. Install the APK on your Android device.
 4. Open **FollIA**, go to Settings ⚙️, and enter your server's IP address.
 
-### V1.0 comming soon with many changes !
+### V1.0 coming soon with many changes !
 
 ## 📜 License
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
