@@ -9,8 +9,8 @@ Because it takes a little madness to want to run an AI in your pocket, but a lot
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="images/chat.jpg" width="250" alt="FollIA Chat Interface" style="margin-right: 20px;">
-  <img src="images/settings.jpg" width="250" alt="FollIA Settings">
+  <img src="images/chatscreen.jpg" width="300" alt="FolliA Chat Screen" />
+  <img src="images/settingscreen.jpg" width="300" alt="FolliA Settings Screen" />
 </p>
 
 ## ✨ Key Features
