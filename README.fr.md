@@ -9,8 +9,8 @@ Parce qu'il faut un peu de folie pour vouloir faire tourner une IA dans sa poche
 ## 📸 Captures d'écran
 
 <p align="center">
-  <img src="images/chat.jpg" width="250" alt="Interface de chat FollIA" style="margin-right: 20px;">
-  <img src="images/settings.jpg" width="250" alt="Paramètres FollIA">
+  <img src="images/chatscreen.jpg" width="300" alt="FolliA Chat Screen" />
+  <img src="images/settingscreen.jpg" width="300" alt="FolliA Settings Screen" />
 </p>
 
 ## ✨ Fonctionnalités Principales
