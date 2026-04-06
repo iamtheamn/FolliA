@@ -37,7 +37,7 @@ Because it takes a little madness to want to run an AI in your pocket, but a lot
 
 ### Installation
 1. Go to the **[Releases](../../releases)** page.
-2. Download the latest `FolliA_v0.5.apk`.
+2. Download the latest `FolliA_v0.6.apk`.
 3. Install the APK on your Android device.
 4. Open **FollIA**, go to Settings ⚙️, and enter your server's IP address.
 
