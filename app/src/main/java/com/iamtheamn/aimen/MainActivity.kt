@@ -6,23 +6,27 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -72,8 +76,11 @@ fun AIMenApp() {
     val prefs = remember { PreferencesManager(context) }
     val database = remember { AppDatabase.getDatabase(context) }
 
+    var isMaleVoice by remember { mutableStateOf(prefs.getIsMaleVoice()) }
+    val ttsManager = remember { TtsManager(context).apply { setVoiceGender(isMaleVoice) } }
+
     val chatViewModel: ChatViewModel = viewModel(
-        factory = ChatViewModelFactory(database.chatDao())
+        factory = ChatViewModelFactory(database.chatDao(), ttsManager)
     )
 
     var currentScreen by remember { mutableStateOf("chat") }
@@ -99,10 +106,29 @@ fun AIMenApp() {
     }
 
     val textColor = if (appTheme == ThemeMode.LIGHT) Color.Black else Color.White
-    val unselectedIconColor = if (appTheme == ThemeMode.LIGHT) Color.Gray else Color.DarkGray
+
+    UpdateCheckerDialog(
+        currentAppVersion = "1.0",
+        context = context,
+        containerColor = navBarColor,
+        textColor = textColor,
+        accentColor = accentColor,
+        appLanguage = appLanguage
+    )
+
+    var showDeleteDialogForId by remember { mutableStateOf<Int?>(null) }
+    var showRenameDialogForId by remember { mutableStateOf<Int?>(null) }
+    var renameInputText by remember { mutableStateOf("") }
+
+    if (currentScreen == "settings") {
+        BackHandler {
+            currentScreen = "chat"
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = currentScreen == "chat",
         drawerContent = {
             ModalDrawerSheet(
                 drawerContainerColor = navBarColor,
@@ -148,26 +174,51 @@ fun AIMenApp() {
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                 )
 
-                LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp)) {
                     items(chatViewModel.conversations) { conv ->
                         val isSelected = chatViewModel.currentConversationId.value == conv.id
-                        NavigationDrawerItem(
-                            label = { Text(conv.title, maxLines = 1) },
-                            selected = isSelected,
+
+                        ConversationDrawerItem(
+                            conv = conv,
+                            isSelected = isSelected,
+                            accentColor = accentColor,
+                            textColor = textColor,
+                            navBarColor = navBarColor,
                             onClick = {
                                 chatViewModel.selectConversation(conv.id)
                                 scope.launch { drawerState.close() }
                             },
-                            colors = NavigationDrawerItemDefaults.colors(
-                                selectedContainerColor = accentColor.copy(alpha = 0.2f),
-                                selectedTextColor = accentColor,
-                                unselectedContainerColor = Color.Transparent,
-                                unselectedTextColor = textColor
-                            )
+                            onTogglePin = { chatViewModel.togglePinConversation(conv.id, conv.isPinned) },
+                            onRenameClick = {
+                                renameInputText = conv.title
+                                showRenameDialogForId = conv.id
+                            },
+                            onDeleteClick = { showDeleteDialogForId = conv.id }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
+
+                HorizontalDivider(color = backgroundColor, modifier = Modifier.padding(vertical = 8.dp))
+
+                NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.settings)) },
+                    selected = currentScreen == "settings",
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    onClick = {
+                        currentScreen = "settings"
+                        scope.launch { drawerState.close() }
+                    },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedTextColor = textColor,
+                        unselectedIconColor = accentColor,
+                        selectedContainerColor = accentColor.copy(alpha = 0.2f),
+                        selectedTextColor = accentColor,
+                        selectedIconColor = accentColor
+                    ),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
         }
     ) {
@@ -175,52 +226,29 @@ fun AIMenApp() {
             modifier = Modifier.fillMaxSize(),
             containerColor = backgroundColor,
             topBar = {
-                if (currentScreen == "chat") {
-                    TopAppBar(
-                        title = { Text(stringResource(R.string.app_name), color = textColor, fontWeight = FontWeight.Bold) },
-                        navigationIcon = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = if (currentScreen == "chat") stringResource(R.string.app_name) else stringResource(R.string.settings),
+                            color = textColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        if (currentScreen == "chat") {
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                 Icon(Icons.Default.Menu, contentDescription = null, tint = textColor)
                             }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = backgroundColor
-                        )
+                        } else {
+                            IconButton(onClick = { currentScreen = "chat" }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = textColor)
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = backgroundColor
                     )
-                }
-            },
-            bottomBar = {
-                NavigationBar(
-                    containerColor = navBarColor,
-                    contentColor = textColor
-                ) {
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                        label = { Text("Chat") },
-                        selected = currentScreen == "chat",
-                        onClick = { currentScreen = "chat" },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = accentColor,
-                            selectedTextColor = accentColor,
-                            indicatorColor = Color.Transparent,
-                            unselectedIconColor = unselectedIconColor,
-                            unselectedTextColor = unselectedIconColor
-                        )
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text(stringResource(R.string.settings)) },
-                        selected = currentScreen == "settings",
-                        onClick = { currentScreen = "settings" },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = accentColor,
-                            selectedTextColor = accentColor,
-                            indicatorColor = Color.Transparent,
-                            unselectedIconColor = unselectedIconColor,
-                            unselectedTextColor = unselectedIconColor
-                        )
-                    )
-                }
+                )
             }
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
@@ -242,6 +270,7 @@ fun AIMenApp() {
                         accentColor = accentColor,
                         backgroundColor = backgroundColor,
                         textColor = textColor,
+                        isMaleVoice = isMaleVoice,
                         onIpSaved = { newIp ->
                             savedIpAddress = newIp
                             prefs.saveIpAddress(newIp)
@@ -263,10 +292,144 @@ fun AIMenApp() {
                         onColorChanged = { newColor ->
                             accentColor = newColor
                             prefs.saveColor(newColor)
+                        },
+                        onVoiceGenderChanged = { isMale ->
+                            isMaleVoice = isMale
+                            prefs.saveIsMaleVoice(isMale)
+                            ttsManager.setVoiceGender(isMale)
                         }
                     )
                 }
             }
         }
     }
+
+    if (showDeleteDialogForId != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialogForId = null },
+            title = { Text(stringResource(R.string.delete), color = textColor) },
+            text = { Text(stringResource(R.string.delete_confirmation), color = textColor) },
+            containerColor = navBarColor,
+            confirmButton = {
+                TextButton(onClick = {
+                    chatViewModel.deleteConversation(showDeleteDialogForId!!)
+                    showDeleteDialogForId = null
+                }) {
+                    Text(stringResource(R.string.delete), color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialogForId = null }) {
+                    Text(stringResource(R.string.cancel), color = accentColor)
+                }
+            }
+        )
+    }
+
+    if (showRenameDialogForId != null) {
+        AlertDialog(
+            onDismissRequest = { showRenameDialogForId = null },
+            title = { Text(stringResource(R.string.rename_conversation), color = textColor) },
+            text = {
+                OutlinedTextField(
+                    value = renameInputText,
+                    onValueChange = { renameInputText = it },
+                    label = { Text(stringResource(R.string.new_name)) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accentColor,
+                        cursorColor = accentColor
+                    )
+                )
+            },
+            containerColor = navBarColor,
+            confirmButton = {
+                TextButton(onClick = {
+                    chatViewModel.renameConversation(showRenameDialogForId!!, renameInputText)
+                    showRenameDialogForId = null
+                }) {
+                    Text(stringResource(R.string.apply), color = accentColor)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialogForId = null }) {
+                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun ConversationDrawerItem(
+    conv: ConversationEntity,
+    isSelected: Boolean,
+    accentColor: Color,
+    textColor: Color,
+    navBarColor: Color,
+    onClick: () -> Unit,
+    onTogglePin: () -> Unit,
+    onRenameClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    NavigationDrawerItem(
+        label = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (conv.isPinned) {
+                    Text("📌 ", fontSize = 14.sp)
+                }
+                Text(conv.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        },
+        selected = isSelected,
+        onClick = onClick,
+        badge = {
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = null,
+                        tint = if (isSelected) accentColor else textColor.copy(alpha = 0.5f)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    containerColor = navBarColor
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (conv.isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin), color = textColor) },
+                        onClick = {
+                            menuExpanded = false
+                            onTogglePin()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.rename), color = textColor) },
+                        onClick = {
+                            menuExpanded = false
+                            onRenameClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.delete), color = Color.Red) },
+                        onClick = {
+                            menuExpanded = false
+                            onDeleteClick()
+                        }
+                    )
+                }
+            }
+        },
+        colors = NavigationDrawerItemDefaults.colors(
+            selectedContainerColor = accentColor.copy(alpha = 0.2f),
+            selectedTextColor = accentColor,
+            unselectedContainerColor = Color.Transparent,
+            unselectedTextColor = textColor
+        )
+    )
 }

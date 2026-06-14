@@ -6,18 +6,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class Message(val text: String, val isUser: Boolean)
 
-class ChatViewModel(private val chatDao: ChatDao) : ViewModel() {
+class ChatViewModel(
+    private val chatDao: ChatDao,
+    private val ttsManager: TtsManager
+) : ViewModel() {
     val messages = mutableStateListOf<Message>()
     val conversations = mutableStateListOf<ConversationEntity>()
     var currentConversationId = mutableStateOf<Int?>(null)
     val availableModels = mutableStateListOf<String>()
     var selectedModel = mutableStateOf("")
+
+    val isTtsEnabled = mutableStateOf(false)
+    var isAiResponding = mutableStateOf(false)
+
+    private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
         loadConversations()
@@ -29,11 +40,27 @@ class ChatViewModel(private val chatDao: ChatDao) : ViewModel() {
             withContext(Dispatchers.Main) {
                 conversations.clear()
                 conversations.addAll(dbConvs)
-                if (conversations.isNotEmpty()) {
+                if (currentConversationId.value == null && conversations.isNotEmpty()) {
                     selectConversation(conversations.first().id)
                 }
             }
         }
+    }
+
+    private suspend fun reloadConversations() {
+        val dbConvs = chatDao.getAllConversations()
+        withContext(Dispatchers.Main) {
+            conversations.clear()
+            conversations.addAll(dbConvs)
+        }
+    }
+
+    fun stopAllAudio() {
+        ttsManager.stop()
+    }
+
+    fun isTtsSpeaking(): Boolean {
+        return ttsManager.isSpeaking()
     }
 
     fun createNewConversation() {
@@ -48,6 +75,40 @@ class ChatViewModel(private val chatDao: ChatDao) : ViewModel() {
             withContext(Dispatchers.Main) {
                 messages.clear()
                 messages.addAll(dbMessages.map { Message(it.text, it.isUser) })
+            }
+        }
+    }
+
+    fun renameConversation(conversationId: Int, newTitle: String) {
+        if (newTitle.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            chatDao.updateConversationTitle(conversationId, newTitle)
+            reloadConversations()
+        }
+    }
+
+    fun togglePinConversation(conversationId: Int, currentIsPinned: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatDao.updateConversationPinned(conversationId, !currentIsPinned)
+            reloadConversations()
+        }
+    }
+
+    fun deleteConversation(conversationId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatDao.deleteMessagesForConversation(conversationId)
+            chatDao.deleteConversation(conversationId)
+            val dbConvs = chatDao.getAllConversations()
+            withContext(Dispatchers.Main) {
+                conversations.clear()
+                conversations.addAll(dbConvs)
+                if (currentConversationId.value == conversationId) {
+                    if (conversations.isNotEmpty()) {
+                        selectConversation(conversations.first().id)
+                    } else {
+                        createNewConversation()
+                    }
+                }
             }
         }
     }
@@ -80,22 +141,26 @@ class ChatViewModel(private val chatDao: ChatDao) : ViewModel() {
     fun sendMessage(userText: String, ipAddress: String, port: String) {
         if (userText.isBlank()) return
 
+        isAiResponding.value = true
+        ttsManager.stop()
+
         messages.add(Message(text = userText, isUser = true))
         messages.add(Message(text = "...", isUser = false))
         val messageIndex = messages.lastIndex
 
-        viewModelScope.launch(Dispatchers.IO) {
+        backgroundScope.launch {
+            var convId = currentConversationId.value
+            var fullText = ""
+            var spokenTextLength = 0
+
             try {
-                var convId = currentConversationId.value
                 if (convId == null) {
                     val title = if (userText.length > 25) userText.take(25) + "..." else userText
                     val newConv = ConversationEntity(title = title)
                     convId = chatDao.insertConversation(newConv).toInt()
                     withContext(Dispatchers.Main) {
                         currentConversationId.value = convId
-                        val updatedConvs = chatDao.getAllConversations()
-                        conversations.clear()
-                        conversations.addAll(updatedConvs)
+                        reloadConversations()
                     }
                 }
 
@@ -109,7 +174,7 @@ class ChatViewModel(private val chatDao: ChatDao) : ViewModel() {
                 val targetModel = selectedModel.value.ifBlank { "llama3" }
 
                 val chatHistory = messages.take(messageIndex).filter {
-                    !it.text.startsWith("❌ Erreur")
+                    !it.text.startsWith("❌ Erreur") && !it.text.startsWith("[Erreur")
                 }.map {
                     OllamaChatMessage(role = if (it.isUser) "user" else "assistant", content = it.text)
                 }
@@ -118,7 +183,6 @@ class ChatViewModel(private val chatDao: ChatDao) : ViewModel() {
                 val responseBody = RetrofitInstance.api.generateTextStream(chatUrl, request)
 
                 val gson = Gson()
-                var fullText = ""
 
                 responseBody.charStream().buffered().use { reader ->
                     var line = reader.readLine()
@@ -128,34 +192,62 @@ class ChatViewModel(private val chatDao: ChatDao) : ViewModel() {
                             val token = chunk.message?.content ?: chunk.response ?: ""
                             fullText += token
 
+                            if (isTtsEnabled.value) {
+                                val unprocessedText = fullText.substring(spokenTextLength)
+                                val lastPunctuationIndex = unprocessedText.indexOfLast { it in ".!?\n,:" }
+
+                                if (lastPunctuationIndex != -1) {
+                                    val chunkToSpeak = unprocessedText.substring(0, lastPunctuationIndex + 1)
+                                    ttsManager.speakChunk(chunkToSpeak, fullText)
+                                    spokenTextLength += chunkToSpeak.length
+                                }
+                            }
+
                             withContext(Dispatchers.Main) {
-                                messages[messageIndex] = Message(text = fullText, isUser = false)
+                                if (messages.size > messageIndex) {
+                                    messages[messageIndex] = Message(text = fullText, isUser = false)
+                                }
                             }
                         } catch (e: Exception) {
                         }
                         line = reader.readLine()
                     }
-                }
 
-                chatDao.insertMessage(MessageEntity(conversationId = convId, text = fullText, isUser = false))
+                    if (isTtsEnabled.value && spokenTextLength < fullText.length) {
+                        val remaining = fullText.substring(spokenTextLength)
+                        ttsManager.speakChunk(remaining, fullText)
+                    }
+                }
 
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    messages[messageIndex] = Message(
-                        text = "❌ Erreur : ${e.message ?: "Serveur injoignable"}",
-                        isUser = false
-                    )
+                    if (messages.size > messageIndex) {
+                        messages[messageIndex] = Message(
+                            text = fullText + "\n[Erreur ou coupure : ${e.message}]",
+                            isUser = false
+                        )
+                    }
+                }
+            } finally {
+                isAiResponding.value = false
+                withContext(NonCancellable) {
+                    if (fullText.isNotBlank() && convId != null) {
+                        chatDao.insertMessage(MessageEntity(conversationId = convId, text = fullText, isUser = false))
+                    }
                 }
             }
         }
     }
 }
 
-class ChatViewModelFactory(private val chatDao: ChatDao) : ViewModelProvider.Factory {
+class ChatViewModelFactory(
+    private val chatDao: ChatDao,
+    private val ttsManager: TtsManager
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ChatViewModel(chatDao) as T
+            return ChatViewModel(chatDao, ttsManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

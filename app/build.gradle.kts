@@ -12,10 +12,19 @@ android {
         applicationId = "com.iamtheamn.aimen"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.6"
+        versionCode = 3
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("C:/Dev/Keystore/follia_keystore.jks")
+            storePassword = "*8ra*dhwcWvCo4"
+            keyAlias = "follia_key"
+            keyPassword = "*8ra*dhwcWvCo4"
+        }
     }
 
     buildTypes {
@@ -26,13 +35,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+        }
+
+        getByName("debug") {
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildFeatures {
         compose = true
     }
@@ -66,4 +80,7 @@ dependencies {
     ksp("androidx.room:room-compiler:$room_version")
 
     implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.24.0")
+
+    implementation("androidx.compose.material3:material3-window-size-class:1.2.1")
+    implementation("androidx.compose.material:material-icons-extended")
 }

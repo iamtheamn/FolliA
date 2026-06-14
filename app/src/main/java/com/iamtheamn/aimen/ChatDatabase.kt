@@ -14,7 +14,8 @@ import androidx.room.RoomDatabase
 data class ConversationEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val title: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val isPinned: Boolean = false
 )
 
 @Entity(tableName = "messages")
@@ -28,7 +29,7 @@ data class MessageEntity(
 
 @Dao
 interface ChatDao {
-    @Query("SELECT * FROM conversations ORDER BY timestamp DESC")
+    @Query("SELECT * FROM conversations ORDER BY isPinned DESC, timestamp DESC")
     suspend fun getAllConversations(): List<ConversationEntity>
 
     @Insert
@@ -39,9 +40,21 @@ interface ChatDao {
 
     @Insert
     suspend fun insertMessage(message: MessageEntity)
+
+    @Query("UPDATE conversations SET title = :newTitle WHERE id = :convId")
+    suspend fun updateConversationTitle(convId: Int, newTitle: String)
+
+    @Query("UPDATE conversations SET isPinned = :isPinned WHERE id = :convId")
+    suspend fun updateConversationPinned(convId: Int, isPinned: Boolean)
+
+    @Query("DELETE FROM conversations WHERE id = :convId")
+    suspend fun deleteConversation(convId: Int)
+
+    @Query("DELETE FROM messages WHERE conversationId = :convId")
+    suspend fun deleteMessagesForConversation(convId: Int)
 }
 
-@Database(entities = [ConversationEntity::class, MessageEntity::class], version = 2, exportSchema = false)
+@Database(entities = [ConversationEntity::class, MessageEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
 

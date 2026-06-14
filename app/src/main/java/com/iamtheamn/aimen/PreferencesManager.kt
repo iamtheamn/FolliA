@@ -6,51 +6,38 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 
 class PreferencesManager(context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("AIMenPrefs", Context.MODE_PRIVATE)
+    private val sharedPreferences: SharedPreferences = context.getSharedPreferences("AIMenPrefs", Context.MODE_PRIVATE)
 
-    fun getIpAddress(): String {
-        return prefs.getString("server_ip", "") ?: ""
-    }
+    fun getIpAddress(): String = sharedPreferences.getString("ip_address", "") ?: ""
+    fun saveIpAddress(ip: String) = sharedPreferences.edit().putString("ip_address", ip).apply()
 
-    fun saveIpAddress(ip: String) {
-        prefs.edit().putString("server_ip", ip).apply()
-    }
-
-    fun getPort(): String {
-        return prefs.getString("server_port", "11434") ?: "11434"
-    }
-
-    fun savePort(port: String) {
-        prefs.edit().putString("server_port", port).apply()
-    }
+    fun getPort(): String = sharedPreferences.getString("port", "11434") ?: "11434"
+    fun savePort(port: String) = sharedPreferences.edit().putString("port", port).apply()
 
     fun getTheme(): ThemeMode {
-        val themeStr = prefs.getString("theme_mode", ThemeMode.DARK.name)
-        return try {
-            ThemeMode.valueOf(themeStr ?: ThemeMode.DARK.name)
-        } catch (e: Exception) {
-            ThemeMode.DARK
-        }
+        val themeString = sharedPreferences.getString("theme", ThemeMode.DARK.name) ?: ThemeMode.DARK.name
+        return ThemeMode.valueOf(themeString)
     }
+    fun saveTheme(theme: ThemeMode) = sharedPreferences.edit().putString("theme", theme.name).apply()
 
-    fun saveTheme(theme: ThemeMode) {
-        prefs.edit().putString("theme_mode", theme.name).apply()
-    }
-
-    fun getLanguage(): String {
-        return prefs.getString("app_language", "system") ?: "system"
-    }
-
-    fun saveLanguage(language: String) {
-        prefs.edit().putString("app_language", language).apply()
-    }
+    fun getLanguage(): String = sharedPreferences.getString("app_language", "system") ?: "system"
+    fun saveLanguage(language: String) = sharedPreferences.edit().putString("app_language", language).apply()
 
     fun getColor(): Color {
-        val colorInt = prefs.getInt("accent_color_argb", 0xFF64B5F6.toInt())
+        val colorInt = sharedPreferences.getInt("accent_color", android.graphics.Color.parseColor("#42A5F5"))
         return Color(colorInt)
     }
+    fun saveColor(color: Color) = sharedPreferences.edit().putInt("accent_color", color.toArgb()).apply()
 
-    fun saveColor(color: Color) {
-        prefs.edit().putInt("accent_color_argb", color.toArgb()).apply()
-    }
+    fun getIsMaleVoice(): Boolean = sharedPreferences.getBoolean("tts_is_male", false)
+    fun saveIsMaleVoice(isMale: Boolean) = sharedPreferences.edit().putBoolean("tts_is_male", isMale).apply()
+
+    fun getNextcloudUrl(): String = sharedPreferences.getString("nc_url", "") ?: ""
+    fun saveNextcloudUrl(url: String) = sharedPreferences.edit().putString("nc_url", url).apply()
+
+    fun getNextcloudUser(): String = sharedPreferences.getString("nc_user", "") ?: ""
+    fun saveNextcloudUser(user: String) = sharedPreferences.edit().putString("nc_user", user).apply()
+
+    fun getNextcloudPassword(): String = sharedPreferences.getString("nc_password", "") ?: ""
+    fun saveNextcloudPassword(password: String) = sharedPreferences.edit().putString("nc_password", password).apply()
 }
