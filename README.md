@@ -5,7 +5,7 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/iamtheamn/FolliA?color=success)](#)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-🌍 **[Visit the Official FolliA Website](https://iamtheamn.github.io/FolliA-Website/)**
+🌍 **[Visit the Official FolliA Website](https://iamtheamn.github.io/FolliA-website/)**
 
 **FolliA** is a lightweight, native, and 100% private Android client designed to interact with your local Large Language Models (LLMs) via **[Ollama](https://ollama.com/)**. 
 
