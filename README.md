@@ -1,4 +1,4 @@
-# 🧠 FolliA - Private Neural Assistant
+# 🧠 FolliA - Local and Native AI. Uncompromising Privacy.
 
 [![en](https://img.shields.io/badge/Language-English-red)](https://github.com/iamtheamn/FolliA/blob/main/README.md)
 [![fr](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](https://github.com/iamtheamn/FolliA/blob/main/README.fr.md)
