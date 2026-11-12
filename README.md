@@ -75,9 +75,5 @@ Starting with v1.0.1, FolliA is signed with a new key, so Android will refuse to
 
 Privacy policy: [iamtheamn.github.io/FolliA-website/privacy.html](https://iamtheamn.github.io/FolliA-website/privacy.html)
 
-## 🤝 Support the project
-FolliA is developed entirely independently. If you find the app useful, consider leaving a ⭐ on this repository or buying me a coffee:
-[![Ko-fi](https://img.shields.io/badge/Support_on-Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/iamtheamn404)
-
 ## 📜 License
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
