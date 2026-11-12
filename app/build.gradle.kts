@@ -57,6 +57,17 @@ android {
         }
     }
 
+    // Un APK par architecture (≈ 23 Mo chacun au lieu de 51 Mo) + un APK universel.
+    // Le moteur de dictée Vosk embarque du code natif propre à chaque processeur.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+            isUniversalApk = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
