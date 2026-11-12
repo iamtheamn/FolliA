@@ -55,8 +55,14 @@ Parce qu'il faut un peu de folie pour vouloir faire tourner une IA dans sa poche
 3. *(Important)* Assurez-vous qu'Ollama écoute les connexions externes en définissant la variable d'environnement `OLLAMA_HOST=0.0.0.0` sur votre machine hôte.
 
 ### Installation
+[![Obtenir sur GitHub](https://img.shields.io/badge/Obtenir_sur-GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](../../releases/latest)
+[![Obtenir avec Obtainium](https://img.shields.io/badge/Obtenir_avec-Obtainium-7C4DFF?style=for-the-badge)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/iamtheamn/FolliA)
+
+Avec **[Obtainium](https://github.com/ImranR98/Obtainium)**, FolliA se met à jour automatiquement à chaque nouvelle release.
+
+Installation manuelle :
 1. Rendez-vous sur la page des **[Releases](../../releases)** du projet.
-2. Téléchargez le fichier `.apk` de la dernière version disponible.
+2. Téléchargez le fichier `.apk` de la dernière version : `arm64-v8a` pour la plupart des téléphones, `universal` en cas de doute.
 3. Installez l'APK sur votre appareil Android.
 4. Ouvrez **FolliA**, allez dans les Réglages ⚙️, et entrez l'adresse IP de votre serveur.
 5. *(Facultatif)* Pour la dictée vocale, téléchargez une fois le modèle de votre langue dans Réglages > Voix.
