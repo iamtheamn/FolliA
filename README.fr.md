@@ -74,9 +74,6 @@ Installation manuelle :
 3. Restaurez votre sauvegarde depuis Réglages > Synchronisation > Restaurer, puis saisissez à nouveau l'adresse de votre serveur.
 
 Politique de confidentialité : [iamtheamn.github.io/FolliA-website/privacy.fr.html](https://iamtheamn.github.io/FolliA-website/privacy.fr.html)
-
-## 🤝 Soutenir le projet
-FolliA est développé de manière totalement indépendante. Si l'application vous est utile, n'hésitez pas à laisser une ⭐ sur ce dépôt ou à m'offrir un café :
 [![Ko-fi](https://img.shields.io/badge/Soutenir_sur-Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/iamtheamn404)
 
 ## 📜 Licence
