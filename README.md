@@ -33,14 +33,14 @@ Because it takes a little madness to want to run an AI in your pocket, but a lot
 </details>
 
 ## ✨ Core Features
-- 🔄 **True Background Persistence:** Switch apps freely. The text generation continues flawlessly in the background without any interruptions.
-- 🎙️ **Hands-Free Voice Conversations:** Talk naturally with your AI using an optimized audio engine with zero echo feedback.
+- 🎙️ **Hands-Free Voice Conversations:** Talk with your AI by voice. Dictation runs entirely on the phone thanks to the open-source [Vosk](https://alphacephei.com/vosk/) engine: no Google service, no connection.
+- 📌 **Organized Conversations:** Pin, rename or delete your chats, all stored on the device.
 - ☁️ **Data Sovereignty & Nextcloud Sync:** Export your chats locally or sync them entirely privately via WebDAV (Nextcloud).
-- 🛡️ **100% Private & Standalone:** All processing stays on your local network. Connect remotely using your own VPN setup. No third-party clouds, absolutely zero telemetry.
+- 🛡️ **100% Private & Standalone:** All processing stays on your local network. Connect remotely using your own VPN setup. No third-party clouds, zero telemetry, no dependency on Google services. Server address and Nextcloud credentials are encrypted on the device.
 
 ## 📱 Minimum Requirements
 **For the Android Device:**
-- Android 8.0 (API 26) or higher.
+- Android 7.0 (API 24) or higher.
 - Active network connection (Local Wi-Fi or mobile data via VPN).
 
 **For the Host Server:**
@@ -59,6 +59,15 @@ Because it takes a little madness to want to run an AI in your pocket, but a lot
 2. Download the `.apk` file for the latest available version.
 3. Install the APK on your Android device.
 4. Open **FolliA**, go to Settings ⚙️, and enter your server's IP address.
+5. *(Optional)* For voice dictation, download your language model once in Settings > Voice.
+
+### ⚠️ Updating from v1.0
+Starting with v1.0.1, FolliA is signed with a new key, so Android will refuse to install v1.0.1 over v1.0:
+1. In v1.0, export your conversations: Settings > Sync > Backup.
+2. Uninstall v1.0, then install v1.0.1.
+3. Restore your backup from Settings > Sync > Restore, then enter your server address again.
+
+Privacy policy: [iamtheamn.github.io/FolliA-website/privacy.html](https://iamtheamn.github.io/FolliA-website/privacy.html)
 
 ## 🤝 Support the project
 FolliA is developed entirely independently. If you find the app useful, consider leaving a ⭐ on this repository or buying me a coffee:

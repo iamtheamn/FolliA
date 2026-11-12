@@ -1,14 +1,19 @@
 package com.iamtheamn.aimen
 
 import android.app.Activity
+import android.app.LocaleManager
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
+import android.os.Build
 import android.os.Bundle
+import android.os.LocaleList
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,37 +40,56 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+
     override fun attachBaseContext(newBase: Context) {
-        val prefs = newBase.getSharedPreferences("AIMenPrefs", Context.MODE_PRIVATE)
+        val prefs = newBase.getSharedPreferences(PreferencesManager.UI_PREFS_FILE, Context.MODE_PRIVATE)
         val lang = prefs.getString("app_language", "system") ?: "system"
-        val context = if (lang != "system") {
-            val locale = Locale.forLanguageTag(lang)
-            Locale.setDefault(locale)
-            val config = Configuration(newBase.resources.configuration)
-            config.setLocale(locale)
-            newBase.createConfigurationContext(config)
-        } else {
-            newBase
-        }
+        val context = updateBaseContextLocale(newBase, lang)
         super.attachBaseContext(context)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val prefs = getSharedPreferences("AIMenPrefs", Context.MODE_PRIVATE)
+        super.onCreate(savedInstanceState)
+
+        val prefs = getSharedPreferences(PreferencesManager.UI_PREFS_FILE, Context.MODE_PRIVATE)
         val lang = prefs.getString("app_language", "system") ?: "system"
-        if (lang != "system") {
-            val locale = Locale.forLanguageTag(lang)
-            Locale.setDefault(locale)
-            val config = Configuration(resources.configuration)
-            config.setLocale(locale)
-            @Suppress("DEPRECATION")
-            baseContext.resources.updateConfiguration(config, baseContext.resources.displayMetrics)
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            val localeManager = getSystemService(LocaleManager::class.java)
+            val expectedTag = if (lang == "system") "" else lang
+            if (localeManager.applicationLocales.toLanguageTags() != expectedTag) {
+                localeManager.applicationLocales = LocaleList.forLanguageTags(expectedTag)
+            }
         }
 
-        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AIMenApp()
+            val locale = if (lang == "system") {
+                Resources.getSystem().configuration.locales[0]
+            } else {
+                Locale.forLanguageTag(lang)
+            }
+
+            val configuration = Configuration(LocalConfiguration.current).apply {
+                setLocale(locale)
+                setLayoutDirection(locale)
+            }
+
+            CompositionLocalProvider(LocalConfiguration provides configuration) {
+                AIMenApp()
+            }
+        }
+    }
+
+    companion object {
+        fun updateBaseContextLocale(context: Context, language: String): Context {
+            if (language == "system") return context
+            val locale = Locale.forLanguageTag(language)
+            Locale.setDefault(locale)
+            val config = Configuration(context.resources.configuration)
+            config.setLocale(locale)
+            config.setLayoutDirection(locale)
+            return context.createConfigurationContext(config)
         }
     }
 }
@@ -98,17 +123,15 @@ fun AIMenApp() {
         ThemeMode.DARK -> Color(0xFF121212)
         ThemeMode.AMOLED -> Color(0xFF000000)
     }
-
     val navBarColor = when (appTheme) {
         ThemeMode.LIGHT -> Color(0xFFF5F5F5)
         ThemeMode.DARK -> Color(0xFF1E1E1E)
         ThemeMode.AMOLED -> Color(0xFF0A0A0A)
     }
-
     val textColor = if (appTheme == ThemeMode.LIGHT) Color.Black else Color.White
 
     UpdateCheckerDialog(
-        currentAppVersion = "1.0",
+        currentAppVersion = BuildConfig.VERSION_NAME,
         context = context,
         containerColor = navBarColor,
         textColor = textColor,
@@ -135,7 +158,6 @@ fun AIMenApp() {
                 drawerContentColor = textColor
             ) {
                 Spacer(modifier = Modifier.height(32.dp))
-
                 Text(
                     text = stringResource(R.string.app_name),
                     color = accentColor,
@@ -143,9 +165,7 @@ fun AIMenApp() {
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
                 )
-
                 HorizontalDivider(color = backgroundColor)
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 NavigationDrawerItem(
@@ -163,7 +183,6 @@ fun AIMenApp() {
                     ),
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
@@ -173,11 +192,9 @@ fun AIMenApp() {
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                 )
-
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp)) {
                     items(chatViewModel.conversations) { conv ->
                         val isSelected = chatViewModel.currentConversationId.value == conv.id
-
                         ConversationDrawerItem(
                             conv = conv,
                             isSelected = isSelected,
@@ -287,6 +304,12 @@ fun AIMenApp() {
                         onLanguageChanged = { newLang ->
                             appLanguage = newLang
                             prefs.saveLanguage(newLang)
+
+                            if (Build.VERSION.SDK_INT >= 33) {
+                                val localeManager = context.getSystemService(LocaleManager::class.java)
+                                localeManager.applicationLocales = LocaleList.forLanguageTags(if (newLang == "system") "" else newLang)
+                            }
+
                             (context as Activity).recreate()
                         },
                         onColorChanged = { newColor ->

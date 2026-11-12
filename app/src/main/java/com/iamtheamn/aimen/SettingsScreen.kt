@@ -1,7 +1,6 @@
 package com.iamtheamn.aimen
 
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -67,16 +67,15 @@ fun SettingsScreen(
 
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp > 600
+
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-
     val prefs = remember { PreferencesManager(context) }
     val chatDao = remember { AppDatabase.getDatabase(context).chatDao() }
     val syncManager = remember { BackupSyncManager(chatDao, prefs) }
 
     var syncModeExpanded by remember { mutableStateOf(false) }
     var syncMode by remember { mutableStateOf("local") }
-
     var ncUrl by remember { mutableStateOf(prefs.getNextcloudUrl()) }
     var ncUser by remember { mutableStateOf(prefs.getNextcloudUser()) }
     var ncPass by remember { mutableStateOf(prefs.getNextcloudPassword()) }
@@ -158,9 +157,9 @@ fun SettingsScreen(
                             SettingsRow(label = stringResource(R.string.language), textColor = textColor) {
                                 Box {
                                     val currentLangLabel = when (currentLanguage) {
-                                        "fr" -> "🇫🇷 Français"
-                                        "en" -> "🇬🇧 English"
-                                        else -> "⚙️ " + stringResource(R.string.system)
+                                        "fr" -> "Français"
+                                        "en" -> "English"
+                                        else -> stringResource(R.string.system)
                                     }
                                     TextButton(onClick = { languageMenuExpanded = true }) {
                                         Text(currentLangLabel, color = accentColor)
@@ -171,21 +170,20 @@ fun SettingsScreen(
                                         modifier = Modifier.background(backgroundColor)
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text("⚙️ " + stringResource(R.string.system), color = textColor) },
+                                            text = { Text(stringResource(R.string.system), color = textColor) },
                                             onClick = { onLanguageChanged("system"); languageMenuExpanded = false }
                                         )
                                         DropdownMenuItem(
-                                            text = { Text("🇫🇷 Français", color = textColor) },
+                                            text = { Text("Français", color = textColor) },
                                             onClick = { onLanguageChanged("fr"); languageMenuExpanded = false }
                                         )
                                         DropdownMenuItem(
-                                            text = { Text("🇬🇧 English", color = textColor) },
+                                            text = { Text("English", color = textColor) },
                                             onClick = { onLanguageChanged("en"); languageMenuExpanded = false }
                                         )
                                     }
                                 }
                             }
-
                             Spacer(modifier = Modifier.height(16.dp))
 
                             SettingsRow(label = stringResource(R.string.theme), textColor = textColor) {
@@ -210,7 +208,6 @@ fun SettingsScreen(
                                     ) { onThemeChanged(ThemeMode.AMOLED) }
                                 }
                             }
-
                             Spacer(modifier = Modifier.height(16.dp))
 
                             SettingsRow(label = stringResource(R.string.color), textColor = textColor) {
@@ -261,7 +258,6 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
-
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -275,7 +271,6 @@ fun SettingsScreen(
                                 ) {
                                     onVoiceGenderChanged(true)
                                 }
-
                                 GenderOption(
                                     text = stringResource(R.string.female_voice),
                                     isSelected = !isMaleVoice,
@@ -317,6 +312,17 @@ fun SettingsScreen(
                             }
                         }
                     }
+                    if (!remember { isTtsEngineInstalled(context) }) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.tts_no_engine),
+                            color = Color(0xFFE57373),
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    OfflineDictationCard(accentColor = accentColor, textColor = textColor)
                 }
 
                 SettingsTab.SERVER -> {
@@ -391,7 +397,6 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(24.dp)) {
-
                             SettingsRow(label = stringResource(R.string.sync_method), textColor = textColor) {
                                 Box {
                                     TextButton(onClick = { syncModeExpanded = true }) {
@@ -461,7 +466,6 @@ fun SettingsScreen(
                                     )
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-
                                 Button(
                                     onClick = {
                                         prefs.saveNextcloudUrl(ncUrl)
@@ -572,11 +576,11 @@ fun SettingsScreen(
                     ) {
                         Column(modifier = Modifier.padding(24.dp)) {
                             SettingsRow(label = stringResource(R.string.version), textColor = textColor) {
-                                Text("1.0.0", color = Color.Gray)
+                                Text(BuildConfig.VERSION_NAME, color = Color.Gray)
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             SettingsRow(label = stringResource(R.string.developer), textColor = textColor) {
-                                Text("iamtheamn", color = Color.Gray)
+                                Text("Aymen HAMMACHE", color = Color.Gray)
                             }
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
@@ -585,25 +589,14 @@ fun SettingsScreen(
                                 color = Color.Gray,
                                 lineHeight = 20.sp
                             )
-
-                            Spacer(modifier = Modifier.height(32.dp))
-
-                            Button(
-                                onClick = {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/iamtheamn404"))
-                                    context.startActivity(intent)
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                                shape = RoundedCornerShape(12.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val uriHandler = LocalUriHandler.current
+                            val privacyUrl = stringResource(R.string.privacy_policy_url)
+                            TextButton(
+                                onClick = { runCatching { uriHandler.openUri(privacyUrl) } },
+                                contentPadding = PaddingValues(0.dp)
                             ) {
-                                Text(
-                                    text = stringResource(R.string.support_kofi),
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text(stringResource(R.string.privacy_policy), color = accentColor)
                             }
                         }
                     }
@@ -819,3 +812,113 @@ fun ThemeOption(text: String, isSelected: Boolean, accentColor: Color, textColor
         Text(text, color = if (isSelected) Color.Black else textColor, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
+
+/** Carte « Dictée vocale hors ligne » : téléchargement et suppression des modèles Vosk. */
+@Composable
+fun OfflineDictationCard(accentColor: Color, textColor: Color) {
+    val context = LocalContext.current
+    val states by VoskModelManager.states.collectAsState()
+
+    LaunchedEffect(Unit) { VoskModelManager.refresh(context) }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.Gray.copy(alpha = 0.05f)),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = stringResource(R.string.stt_section_title),
+                color = textColor,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.stt_section_desc),
+                color = Color.Gray,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+            SttLanguage.entries.forEach { language ->
+                Spacer(modifier = Modifier.height(16.dp))
+                DictationModelRow(
+                    language = language,
+                    state = states[language] ?: ModelState.NotInstalled,
+                    accentColor = accentColor,
+                    textColor = textColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DictationModelRow(
+    language: SttLanguage,
+    state: ModelState,
+    accentColor: Color,
+    textColor: Color
+) {
+    val context = LocalContext.current
+    val label = stringResource(if (language == SttLanguage.FRENCH) R.string.french else R.string.english)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(text = label, color = textColor, modifier = Modifier.weight(1f))
+            when (state) {
+                ModelState.NotInstalled, ModelState.Failed -> TextButton(
+                    onClick = { VoskModelManager.download(context, language) }
+                ) {
+                    Text(stringResource(R.string.stt_download, language.sizeMb), color = accentColor)
+                }
+
+                is ModelState.Downloading -> TextButton(
+                    onClick = { VoskModelManager.cancelDownload(language) }
+                ) {
+                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                }
+
+                ModelState.Installed -> {
+                    Text(stringResource(R.string.stt_installed), color = Color(0xFF81C784), fontSize = 14.sp)
+                    TextButton(onClick = { VoskModelManager.delete(context, language) }) {
+                        Text(stringResource(R.string.delete), color = Color.Gray)
+                    }
+                }
+            }
+        }
+
+        if (state is ModelState.Downloading) {
+            Spacer(modifier = Modifier.height(4.dp))
+            val progress = state.progress
+            if (progress == null) {
+                LinearProgressIndicator(color = accentColor, modifier = Modifier.fillMaxWidth())
+            } else {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    color = accentColor,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        if (state == ModelState.Failed) {
+            Text(
+                text = stringResource(R.string.stt_download_failed),
+                color = Color.Red,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+/** Vrai si au moins un moteur de synthèse vocale est installé (nécessite <queries> dans le manifeste). */
+private fun isTtsEngineInstalled(context: android.content.Context): Boolean =
+    try {
+        context.packageManager
+            .queryIntentServices(Intent(android.speech.tts.TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
+            .isNotEmpty()
+    } catch (e: Exception) {
+        true // en cas de doute, on n'affiche pas d'avertissement
+    }

@@ -10,3 +10,5 @@ local.properties
 Thumbs.db
 *.jks
 *.keystore
+keystore.properties
+.kotlin/

@@ -1,30 +1,42 @@
 package com.iamtheamn.aimen
 
 import android.content.Context
-import android.content.Intent
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
-import java.util.Locale
+import org.json.JSONObject
+import org.vosk.Model
+import org.vosk.Recognizer
+import org.vosk.android.RecognitionListener
+import org.vosk.android.SpeechService
+import java.util.concurrent.Executors
 
+/**
+ * Dictée vocale 100 % hors ligne, basée sur Vosk : l'audio ne quitte jamais l'appareil
+ * et aucun service Google n'est nécessaire. Le modèle de la langue de l'appli doit
+ * avoir été téléchargé depuis Réglages > Voix.
+ */
 class SttManager(private val context: Context) {
-    private var speechRecognizer: SpeechRecognizer? = null
+
+    private val appContext = context.applicationContext
+    private val handler = Handler(Looper.getMainLooper())
+    private val modelLoader = Executors.newSingleThreadExecutor()
+
+    private var speechService: SpeechService? = null
+    private var recognizer: Recognizer? = null
+
     var isListening = false
         private set
 
     private var isIntentionallyStopped = false
     private var fullTranscript = ""
-    private var currentPartial = ""
+    /** Incrémenté à chaque démarrage/arrêt : invalide un chargement de modèle devenu obsolète. */
+    private var session = 0
 
     private var onResultCallback: ((String) -> Unit)? = null
     private var onSilenceTimeoutCallback: (() -> Unit)? = null
     private var onStateChangedCallback: ((Boolean) -> Unit)? = null
     private var onErrorCallback: ((String) -> Unit)? = null
 
-    private val handler = Handler(Looper.getMainLooper())
     private val silenceRunnable = Runnable {
         if (isListening && !isIntentionallyStopped) {
             stopListening()
@@ -34,12 +46,22 @@ class SttManager(private val context: Context) {
 
     private fun startSilenceTimer() {
         handler.removeCallbacks(silenceRunnable)
-        handler.postDelayed(silenceRunnable, 5000L)
+        handler.postDelayed(silenceRunnable, SILENCE_TIMEOUT_MS)
     }
 
     private fun cancelSilenceTimer() {
         handler.removeCallbacks(silenceRunnable)
     }
+
+    /** Langue de dictée correspondant à la langue actuelle de l'appli. */
+    fun currentLanguage(): SttLanguage {
+        val appLanguage = appContext
+            .getSharedPreferences(PreferencesManager.UI_PREFS_FILE, Context.MODE_PRIVATE)
+            .getString(PreferencesManager.KEY_LANGUAGE, "system") ?: "system"
+        return SttLanguage.forAppLanguage(appLanguage)
+    }
+
+    fun isModelReady(): Boolean = VoskModelManager.isInstalled(appContext, currentLanguage())
 
     fun startListening(
         initialText: String,
@@ -48,114 +70,91 @@ class SttManager(private val context: Context) {
         onError: (String) -> Unit,
         onStateChanged: (Boolean) -> Unit
     ) {
-        this.fullTranscript = initialText.trim()
-        this.currentPartial = ""
-        this.onResultCallback = onResult
-        this.onSilenceTimeoutCallback = onSilence
-        this.onErrorCallback = onError
-        this.onStateChangedCallback = onStateChanged
-        this.isIntentionallyStopped = false
+        releaseService()
+        fullTranscript = initialText.trim()
+        onResultCallback = onResult
+        onSilenceTimeoutCallback = onSilence
+        onErrorCallback = onError
+        onStateChangedCallback = onStateChanged
+        isIntentionallyStopped = false
 
-        startSilenceTimer()
-        startRecognizer()
-    }
-
-    private fun restartRecognizerSafely() {
-        if (isIntentionallyStopped) return
-        handler.postDelayed({
-            if (!isIntentionallyStopped) {
-                startRecognizer()
-            }
-        }, 50)
-    }
-
-    private fun startRecognizer() {
-        if (isIntentionallyStopped) return
-
-        try {
-            speechRecognizer?.destroy()
-        } catch (e: Exception) { }
-
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
-
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        val language = currentLanguage()
+        if (!VoskModelManager.isInstalled(appContext, language)) {
+            onError(context.getString(R.string.stt_model_missing))
+            return
         }
 
-        speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {
-                if (!isListening) {
-                    isListening = true
-                    onStateChangedCallback?.invoke(true)
-                }
+        val currentSession = ++session
+        modelLoader.execute {
+            val result = runCatching { VoskModelManager.loadModel(appContext, language) }
+            handler.post {
+                if (currentSession != session || isIntentionallyStopped) return@post
+                result
+                    .onSuccess { startRecognizer(it) }
+                    .onFailure { fail(R.string.stt_model_load_error) }
             }
+        }
+    }
 
-            override fun onBeginningOfSpeech() {
-                cancelSilenceTimer()
-            }
+    private fun startRecognizer(model: Model) {
+        try {
+            val rec = Recognizer(model, SAMPLE_RATE)
+            recognizer = rec
+            val service = SpeechService(rec, SAMPLE_RATE)
+            speechService = service
+            if (!service.startListening(listener)) throw IllegalStateException("Micro déjà utilisé")
 
-            override fun onRmsChanged(rmsdB: Float) {}
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
+            isListening = true
+            onStateChangedCallback?.invoke(true)
+            startSilenceTimer()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            releaseService()
+            fail(R.string.stt_error_audio)
+        }
+    }
 
-            override fun onError(error: Int) {
-                if (isIntentionallyStopped) return
+    private val listener = object : RecognitionListener {
+        override fun onPartialResult(hypothesis: String?) {
+            if (isIntentionallyStopped) return
+            val partial = parse(hypothesis, "partial")
+            if (partial.isEmpty()) return
+            startSilenceTimer() // l'utilisateur parle : on repousse l'envoi automatique
+            onResultCallback?.invoke(if (fullTranscript.isEmpty()) partial else "$fullTranscript $partial")
+        }
 
-                if (error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
-                    error == SpeechRecognizer.ERROR_NO_MATCH ||
-                    error == 11) {
-                    restartRecognizerSafely()
-                } else {
-                    stopListening()
-                    onErrorCallback?.invoke(getErrorText(error))
-                }
-            }
+        override fun onResult(hypothesis: String?) {
+            if (isIntentionallyStopped) return
+            val text = parse(hypothesis, "text")
+            if (text.isEmpty()) return
+            fullTranscript = if (fullTranscript.isEmpty()) text else "$fullTranscript $text"
+            onResultCallback?.invoke(fullTranscript)
+            startSilenceTimer()
+        }
 
-            override fun onResults(results: Bundle?) {
-                if (isIntentionallyStopped) return
-                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                if (!matches.isNullOrEmpty()) {
-                    val text = matches[0]
-                    fullTranscript = if (fullTranscript.isEmpty()) text else "$fullTranscript $text"
-                    currentPartial = ""
-                    onResultCallback?.invoke(fullTranscript)
-                }
+        override fun onFinalResult(hypothesis: String?) {
+            // Appelé après un arrêt volontaire : le texte utile a déjà été transmis par onResult
+        }
 
-                startSilenceTimer()
+        override fun onError(exception: Exception?) {
+            if (isIntentionallyStopped) return
+            exception?.printStackTrace()
+            fail(R.string.stt_error_audio)
+        }
 
-                restartRecognizerSafely()
-            }
+        override fun onTimeout() {}
+    }
 
-            override fun onPartialResults(partialResults: Bundle?) {
-                if (isIntentionallyStopped) return
-
-                cancelSilenceTimer()
-
-                val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                if (!matches.isNullOrEmpty()) {
-                    currentPartial = matches[0]
-                    val displayedText = if (fullTranscript.isEmpty()) currentPartial
-                    else if (currentPartial.isEmpty()) fullTranscript
-                    else "$fullTranscript $currentPartial"
-                    onResultCallback?.invoke(displayedText)
-                }
-            }
-
-            override fun onEvent(eventType: Int, params: Bundle?) {}
-        })
-
-        speechRecognizer?.startListening(intent)
+    private fun fail(messageRes: Int) {
+        stopListening()
+        onErrorCallback?.invoke(context.getString(messageRes))
     }
 
     fun stopListening() {
         isIntentionallyStopped = true
+        session++
         cancelSilenceTimer()
-        try {
-            speechRecognizer?.stopListening()
-            speechRecognizer?.cancel()
-        } catch (e: Exception) {}
+        releaseService()
 
         if (isListening) {
             isListening = false
@@ -163,25 +162,34 @@ class SttManager(private val context: Context) {
         }
     }
 
-    fun destroy() {
-        stopListening()
+    private fun releaseService() {
         try {
-            speechRecognizer?.destroy()
-        } catch (e: Exception) {}
+            speechService?.stop()
+            speechService?.shutdown()
+        } catch (e: Exception) {
+        }
+        try {
+            recognizer?.close()
+        } catch (e: Exception) {
+        }
+        speechService = null
+        recognizer = null
     }
 
-    private fun getErrorText(errorCode: Int): String {
-        return when (errorCode) {
-            SpeechRecognizer.ERROR_AUDIO -> "Erreur audio"
-            SpeechRecognizer.ERROR_CLIENT -> "Erreur client"
-            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Permission micro refusée"
-            SpeechRecognizer.ERROR_NETWORK -> "Erreur réseau"
-            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Délai réseau dépassé"
-            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Service occupé"
-            SpeechRecognizer.ERROR_SERVER -> "Erreur serveur"
-            11 -> "Serveur déconnecté"
-            12 -> "Langue non supportée"
-            else -> "Erreur inconnue ($errorCode)"
+    fun destroy() {
+        stopListening()
+        modelLoader.shutdown()
+    }
+
+    private fun parse(hypothesis: String?, key: String): String =
+        try {
+            JSONObject(hypothesis ?: "").optString(key).trim()
+        } catch (e: Exception) {
+            ""
         }
+
+    private companion object {
+        const val SAMPLE_RATE = 16000.0f
+        const val SILENCE_TIMEOUT_MS = 5000L
     }
 }

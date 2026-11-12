@@ -73,5 +73,21 @@
     <string name="update_whats_new">Nouveautés :</string>
     <string name="update_download">Télécharger</string>
     <string name="update_later">Plus tard</string>
-    <string name="support_kofi">☕ Soutenir sur Ko-fi</string>
+    <string name="privacy_policy">Politique de confidentialité</string>
+    <string name="privacy_policy_url">https://iamtheamn.github.io/FolliA-website/privacy.fr.html</string>
+    <string name="stt_section_title">Dictée vocale hors ligne</string>
+    <string name="stt_section_desc">La reconnaissance vocale fonctionne entièrement sur votre téléphone, sans service Google ni connexion. Téléchargez une seule fois le modèle de votre langue (fourni par le projet open source Vosk).</string>
+    <string name="stt_download">Télécharger (%1$d Mo)</string>
+    <string name="stt_installed">Installé</string>
+    <string name="stt_download_failed">❌ Échec du téléchargement. Vérifiez votre connexion et réessayez.</string>
+    <string name="stt_model_missing">Téléchargez d\'abord le modèle de dictée dans Réglages &gt; Voix.</string>
+    <string name="stt_model_load_error">Impossible de charger le modèle de dictée. Supprimez-le puis téléchargez-le à nouveau.</string>
+    <string name="stt_error_audio">Le micro est indisponible.</string>
+    <string name="voice_panel_title">FolliA Voice</string>
+    <string name="voice_status_listening">FolliA vous écoute…</string>
+    <string name="voice_status_answering">FolliA répond…</string>
+    <string name="voice_status_connecting">Connexion…</string>
+    <string name="chat_error_generic">Réponse interrompue : le serveur est injoignable.</string>
+    <string name="chat_error_with_detail">Réponse interrompue : %1$s</string>
+    <string name="tts_no_engine">Aucun moteur de synthèse vocale n\'est installé : la lecture à voix haute est désactivée. Installez-en un depuis votre magasin d\'applications, puis choisissez-le dans les voix du système.</string>
 </resources>

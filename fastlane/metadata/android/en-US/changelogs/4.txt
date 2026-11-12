@@ -1,0 +1,8 @@
+• 100% offline voice dictation (Vosk), no Google service
+• Read aloud with the text-to-speech engine of your choice
+• Encrypted server address and Nextcloud credentials
+• Nextcloud over HTTPS only
+• Safe backup restore (all or nothing)
+• Fix: the chosen language is kept
+• Translated error messages
+• Link to the privacy policy

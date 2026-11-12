@@ -3,6 +3,7 @@ package com.iamtheamn.aimen
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,32 @@ import kotlinx.coroutines.withContext
 import java.net.URL
 import java.util.Locale
 
+/**
+ * Magasins d'applications qui gèrent eux-mêmes les mises à jour de FolliA.
+ * Les clients F-Droid servent aussi pour le dépôt IzzyOnDroid.
+ */
+private val STORE_INSTALLERS = setOf(
+    "org.fdroid.fdroid",          // F-Droid
+    "org.fdroid.basic",           // F-Droid Basic
+    "com.looker.droidify",        // Droid-ify
+    "com.machiav3lli.fdroid"      // Neo Store
+)
+
+/** Vrai si l'appli a été installée depuis un magasin qui assure ses mises à jour. */
+private fun isInstalledFromStore(context: Context): Boolean {
+    val installer = try {
+        if (Build.VERSION.SDK_INT >= 30) {
+            context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getInstallerPackageName(context.packageName)
+        }
+    } catch (e: Exception) {
+        null
+    }
+    return installer in STORE_INSTALLERS
+}
+
 data class GithubRelease(
     val tag_name: String,
     val body: String?,
@@ -29,7 +56,7 @@ data class GithubRelease(
 
 @Composable
 fun UpdateCheckerDialog(
-    currentAppVersion: String = "1.0",
+    currentAppVersion: String = BuildConfig.VERSION_NAME,
     context: Context,
     containerColor: Color,
     textColor: Color,
@@ -42,6 +69,10 @@ fun UpdateCheckerDialog(
     val githubApiUrl = "https://api.github.com/repos/iamtheamn/FolliA/releases/latest"
 
     LaunchedEffect(Unit) {
+        // Installée depuis un magasin (F-Droid, IzzyOnDroid...) : c'est lui
+        // qui gère les mises à jour. La vérification GitHub ne sert qu'aux APK téléchargés
+        // directement depuis les releases.
+        if (isInstalledFromStore(context)) return@LaunchedEffect
         withContext(Dispatchers.IO) {
             try {
                 val jsonResponse = URL(githubApiUrl).readText()

@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 
 @Entity(tableName = "conversations")
 data class ConversationEntity(
@@ -52,6 +53,27 @@ interface ChatDao {
 
     @Query("DELETE FROM messages WHERE conversationId = :convId")
     suspend fun deleteMessagesForConversation(convId: Int)
+
+    @Query("DELETE FROM conversations")
+    suspend fun deleteAllConversations()
+
+    @Query("DELETE FROM messages")
+    suspend fun deleteAllMessages()
+
+    @Insert
+    suspend fun insertConversations(conversations: List<ConversationEntity>)
+
+    @Insert
+    suspend fun insertMessages(messages: List<MessageEntity>)
+
+    /** Remplace tout le contenu de la base de façon atomique (tout ou rien). */
+    @Transaction
+    suspend fun replaceAll(conversations: List<ConversationEntity>, messages: List<MessageEntity>) {
+        deleteAllMessages()
+        deleteAllConversations()
+        insertConversations(conversations)
+        insertMessages(messages)
+    }
 }
 
 @Database(entities = [ConversationEntity::class, MessageEntity::class], version = 3, exportSchema = false)
@@ -69,7 +91,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "chat_database"
                 )
-                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    // Seuls les anciens schémas (v0.5 / v0.6) sont recréés à neuf. À partir de la
+                    // version 3, tout changement de schéma doit fournir une Migration explicite :
+                    // plus aucune perte silencieuse des conversations.
+                    .fallbackToDestructiveMigrationFrom(dropAllTables = true, 1, 2)
                     .build()
                 INSTANCE = instance
                 instance

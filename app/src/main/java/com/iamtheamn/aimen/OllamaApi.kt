@@ -48,11 +48,25 @@ interface OllamaApiService {
     suspend fun generateTextStream(@Url url: String, @Body request: OllamaRequest): ResponseBody
 }
 
+/**
+ * Construit l'URL de base du serveur Ollama.
+ * HTTP par défaut (réseau local / VPN) ; HTTPS si l'adresse saisie commence par "https://".
+ */
+fun buildOllamaBaseUrl(address: String, port: String): String {
+    val trimmed = address.trim().trimEnd('/')
+    val scheme = if (trimmed.startsWith("https://", ignoreCase = true)) "https" else "http"
+    val host = trimmed.substringAfter("://")
+    val cleanPort = port.trim().ifBlank { "11434" }
+    // Une IPv6 littérale doit être entourée de crochets dans une URL
+    val formattedHost = if (host.contains(":") && !host.startsWith("[")) "[$host]" else host
+    return "$scheme://$formattedHost:$cleanPort/"
+}
+
 object RetrofitInstance {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.MINUTES)
-        .readTimeout(10, TimeUnit.MINUTES)
-        .writeTimeout(10, TimeUnit.MINUTES)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.MINUTES) // un modèle local peut mettre longtemps à répondre
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     val api: OllamaApiService by lazy {

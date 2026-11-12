@@ -1,8 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
+
+// Identifiants de signature : lus depuis keystore.properties (ignoré par Git)
+// ou, à défaut, depuis les variables d'environnement. Jamais en clair dans le dépôt.
+val keystoreProps = Properties().apply {
+    val propsFile = rootProject.file("keystore.properties")
+    if (propsFile.exists()) propsFile.inputStream().use { load(it) }
+}
+fun signingValue(key: String, env: String): String? =
+    keystoreProps.getProperty(key) ?: System.getenv(env)
 
 android {
     namespace = "com.iamtheamn.aimen"
@@ -12,18 +23,21 @@ android {
         applicationId = "com.iamtheamn.aimen"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0"
+        versionCode = 4
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file("C:/Dev/Keystore/follia_keystore.jks")
-            storePassword = "*8ra*dhwcWvCo4"
-            keyAlias = "follia_key"
-            keyPassword = "*8ra*dhwcWvCo4"
+            val storePath = signingValue("storeFile", "KEYSTORE_FILE")
+            if (storePath != null) {
+                storeFile = file(storePath)
+                storePassword = signingValue("storePassword", "KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "KEY_ALIAS") ?: "follia_key"
+                keyPassword = signingValue("keyPassword", "KEY_PASSWORD")
+            }
         }
     }
 
@@ -35,7 +49,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            // Sans keystore configuré, le build release reste simplement non signé
+            signingConfig = signingConfigs.getByName("release").takeIf { it.storeFile != null }
         }
 
         getByName("debug") {
@@ -49,6 +64,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true // BuildConfig.VERSION_NAME : source unique de la version
     }
 }
 
@@ -83,4 +99,11 @@ dependencies {
 
     implementation("androidx.compose.material3:material3-window-size-class:1.2.1")
     implementation("androidx.compose.material:material-icons-extended")
+
+    // NOUVEAU : Chiffrement matériel pour les identifiants Nextcloud
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Dictée vocale 100 % hors ligne, sans service Google (licence Apache 2.0)
+    implementation("com.alphacephei:vosk-android:0.3.75@aar")
+    implementation("net.java.dev.jna:jna:5.18.1@aar")
 }

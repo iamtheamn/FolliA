@@ -1,0 +1,8 @@
+• Dictée vocale 100 % hors ligne (Vosk), sans service Google
+• Lecture à voix haute avec le moteur de synthèse de votre choix
+• Adresse du serveur et identifiants Nextcloud chiffrés
+• Nextcloud en HTTPS uniquement
+• Restauration de sauvegarde sécurisée (tout ou rien)
+• Correction : la langue choisie est conservée
+• Messages d'erreur traduits
+• Lien vers la politique de confidentialité

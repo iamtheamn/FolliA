@@ -1,0 +1,14 @@
+<p>FolliA est un client Android open source pour discuter avec vos propres modèles de langage (LLM) hébergés avec <a href="https://ollama.com">Ollama</a>, sur votre réseau local ou à travers votre VPN.</p>
+<p>Aucun compte, aucun cloud tiers, aucune télémétrie, aucune dépendance aux services Google : vos conversations restent sur votre téléphone et sur vos serveurs.</p>
+<p><b>Fonctionnalités</b></p>
+<ul>
+<li>Discussion en temps réel avec les modèles de votre serveur Ollama, avec rendu Markdown</li>
+<li>Historique stocké sur l'appareil : épingler, renommer, supprimer</li>
+<li>Mode vocal mains-libres : dictée 100 % hors ligne grâce au moteur open source Vosk (modèle de langue à télécharger une fois) et lecture à voix haute par le moteur de synthèse de votre choix</li>
+<li>Sauvegarde locale en JSON ou synchronisation avec votre propre serveur Nextcloud (HTTPS)</li>
+<li>Adresse du serveur et identifiants chiffrés via l'Android Keystore</li>
+<li>Thèmes clair, sombre et AMOLED, couleur d'accentuation, interface adaptée aux tablettes</li>
+<li>Français et anglais</li>
+</ul>
+<p><b>Prérequis</b> : un ordinateur ou un serveur qui fait tourner Ollama, accessible depuis le téléphone (même réseau ou VPN), avec la variable OLLAMA_HOST=0.0.0.0.</p>
+<p>La connexion à Ollama se fait en HTTP sur le réseau local, car Ollama ne propose pas de HTTPS par lui-même ; utilisez une adresse en https:// si vous placez un proxy devant votre serveur.</p>

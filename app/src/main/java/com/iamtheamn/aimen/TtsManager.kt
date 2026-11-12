@@ -4,17 +4,32 @@ import android.content.Context
 import android.speech.tts.TextToSpeech
 import java.util.Locale
 
+/**
+ * Lecture à voix haute avec le moteur de synthèse choisi dans les réglages Android
+ * (Samsung, Google, RHVoice, eSpeak...). Aucun moteur précis n'est imposé : l'appli
+ * fonctionne aussi sur un téléphone sans services Google.
+ */
 class TtsManager(context: Context) : TextToSpeech.OnInitListener {
-    private var tts: TextToSpeech? = TextToSpeech(context, this, "com.google.android.tts")
+    private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
     private var isInitialized = false
-    private var currentLocale: Locale = Locale.FRENCH
+    private var currentLocale: Locale = initialLocale(context)
     var isMaleVoice: Boolean = false
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             isInitialized = true
             applyVoiceAndLanguage(currentLocale)
+        } else {
+            // Aucun moteur de synthèse vocale installé : la lecture est simplement désactivée
+            isInitialized = false
         }
+    }
+
+    private fun initialLocale(context: Context): Locale {
+        val appLanguage = context.applicationContext
+            .getSharedPreferences(PreferencesManager.UI_PREFS_FILE, Context.MODE_PRIVATE)
+            .getString(PreferencesManager.KEY_LANGUAGE, "system") ?: "system"
+        return if (SttLanguage.forAppLanguage(appLanguage) == SttLanguage.FRENCH) Locale.FRENCH else Locale.US
     }
 
     private fun detectLanguage(text: String): Locale {
@@ -35,7 +50,11 @@ class TtsManager(context: Context) : TextToSpeech.OnInitListener {
 
     private fun applyVoiceAndLanguage(locale: Locale) {
         currentLocale = locale
-        tts?.language = locale
+        val result = tts?.setLanguage(locale) ?: TextToSpeech.LANG_NOT_SUPPORTED
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            // Langue absente du moteur : on garde la voix actuelle plutôt que de rester muet
+            return
+        }
         tts?.setPitch(1.0f)
         tts?.setSpeechRate(1.0f)
 

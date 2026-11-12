@@ -160,7 +160,14 @@ fun ChatScreen(
     var showVoiceMenu by remember { mutableStateOf(false) }
 
     val startMic = {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            // Rien : la permission est demandée par le bouton micro
+        } else if (!sttManager.isModelReady()) {
+            // Dictée hors ligne : le modèle de langue doit être téléchargé une fois
+            Toast.makeText(context, R.string.stt_model_missing, Toast.LENGTH_LONG).show()
+            showVoiceMenu = false
+            viewModel.isTtsEnabled.value = false
+        } else {
             showVoiceMenu = true
             viewModel.isTtsEnabled.value = true
             sttManager.startListening(
@@ -173,7 +180,12 @@ fun ChatScreen(
                         viewModel.sendMessage(userText = textToSend, ipAddress = currentIp, port = currentPort)
                     }
                 },
-                onError = { /* Ignoré pour ne pas casser la boucle infinie */ },
+                onError = { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    viewModel.stopAllAudio()
+                    viewModel.isTtsEnabled.value = false
+                    showVoiceMenu = false
+                },
                 onStateChanged = { isListening = it }
             )
         }
@@ -227,7 +239,7 @@ fun ChatScreen(
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = " FolliA Voice ", color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(text = stringResource(R.string.voice_panel_title), color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         IconButton(onClick = {
                             sttManager.stopListening()
                             viewModel.stopAllAudio()
@@ -239,7 +251,13 @@ fun ChatScreen(
                     Spacer(modifier = Modifier.height(40.dp))
                     GeometricPulsingStar(color = accentColor)
 
-                    val statusText = if (isListening) "FolliA vous écoute..." else if (viewModel.isAiResponding.value || viewModel.isTtsSpeaking()) "FolliA répond..." else "Connexion..."
+                    val statusText = stringResource(
+                        when {
+                            isListening -> R.string.voice_status_listening
+                            viewModel.isAiResponding.value || viewModel.isTtsSpeaking() -> R.string.voice_status_answering
+                            else -> R.string.voice_status_connecting
+                        }
+                    )
                     Text(text = statusText, color = accentColor, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 20.dp))
 
                     val displayText = if ((viewModel.isAiResponding.value || viewModel.isTtsSpeaking()) && messages.isNotEmpty() && !messages.last().isUser) {
@@ -348,12 +366,25 @@ fun MessageBubble(message: Message, appTheme: ThemeMode, accentColor: Color) {
                     if (isUser) {
                         Text(text = message.text, color = messageTextColor, fontSize = 16.sp)
                     } else {
-                        Markdown(
-                            content = message.text,
-                            colors = markdownColor(text = messageTextColor, codeText = messageTextColor, codeBackground = codeBackgroundColor, linkText = accentColor),
-                            typography = markdownTypography(text = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp)),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        Column {
+                            if (message.text.isNotBlank() && !(message.errorDetail != null && message.text == "...")) {
+                                Markdown(
+                                    content = message.text,
+                                    colors = markdownColor(text = messageTextColor, codeText = messageTextColor, codeBackground = codeBackgroundColor, linkText = accentColor),
+                                    typography = markdownTypography(text = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp)),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            message.errorDetail?.let { detail ->
+                                Text(
+                                    text = if (detail.isBlank()) stringResource(R.string.chat_error_generic)
+                                    else stringResource(R.string.chat_error_with_detail, detail),
+                                    color = Color(0xFFE57373),
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(top = if (message.text.isNotBlank() && message.text != "...") 8.dp else 0.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Ollama est joint en HTTP sur le réseau local ou à travers un VPN : le trafic
+        en clair doit donc rester autorisé (Android ne permet pas de le limiter à une
+        plage d'adresses IP privées). Les flux sensibles sont protégés dans le code :
+        la synchronisation Nextcloud refuse toute URL qui n'est pas en HTTPS.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!-- Uniquement les autorités de certification du système -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

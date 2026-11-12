@@ -4,7 +4,6 @@ import android.util.Base64
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -17,28 +16,23 @@ class BackupSyncManager(private val chatDao: ChatDao, private val prefs: Prefere
 
     suspend fun getBackupJsonString(): String = withContext(Dispatchers.IO) {
         val allConversations = chatDao.getAllConversations()
-        val allMessages = mutableListOf<MessageEntity>()
-        for (conv in allConversations) {
-            allMessages.addAll(chatDao.getMessagesForConversation(conv.id))
-        }
+        val allMessages = allConversations.flatMap { chatDao.getMessagesForConversation(it.id) }
         Gson().toJson(BackupData(allConversations, allMessages))
     }
 
     suspend fun restoreFromJsonString(jsonString: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val backupData = Gson().fromJson(jsonString, BackupData::class.java)
+            val backupData: BackupData? = Gson().fromJson(jsonString, BackupData::class.java)
 
-            for (conv in chatDao.getAllConversations()) {
-                chatDao.deleteConversation(conv.id)
-                chatDao.deleteMessagesForConversation(conv.id)
+            // Gson ne respecte pas la non-nullabilité Kotlin : un JSON incomplet donne des
+            // champs null. On valide AVANT de toucher aux données existantes.
+            @Suppress("SENSELESS_COMPARISON")
+            if (backupData == null || backupData.conversations == null || backupData.messages == null) {
+                return@withContext false
             }
 
-            for (conv in backupData.conversations) {
-                chatDao.insertConversation(conv)
-            }
-            for (msg in backupData.messages) {
-                chatDao.insertMessage(msg)
-            }
+            // Transaction : si l'insertion échoue, les anciennes conversations sont conservées
+            chatDao.replaceAll(backupData.conversations, backupData.messages)
             true
         } catch (e: Exception) {
             e.printStackTrace()
@@ -47,54 +41,64 @@ class BackupSyncManager(private val chatDao: ChatDao, private val prefs: Prefere
     }
 
     suspend fun backupToNextcloud(): Boolean = withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
         try {
             val jsonData = getBackupJsonString()
-
-            var rawUrl = prefs.getNextcloudUrl().trim()
-            if (!rawUrl.endsWith("/")) rawUrl += "/"
-            val targetUrl = URL("${rawUrl}remote.php/webdav/follia_backup.json")
-
-            val connection = targetUrl.openConnection() as HttpURLConnection
+            connection = openNextcloudConnection() ?: return@withContext false
             connection.requestMethod = "PUT"
             connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
 
-            val auth = "${prefs.getNextcloudUser()}:${prefs.getNextcloudPassword()}"
-            val encodedAuth = Base64.encodeToString(auth.toByteArray(), Base64.NO_WRAP)
-            connection.setRequestProperty("Authorization", "Basic ${encodedAuth.trim()}")
-            connection.setRequestProperty("Content-Type", "application/json")
+            connection.outputStream.bufferedWriter(Charsets.UTF_8).use { it.write(jsonData) }
 
-            val outStream = OutputStreamWriter(connection.outputStream)
-            outStream.write(jsonData)
-            outStream.close()
-
-            return@withContext connection.responseCode in 200..299
+            connection.responseCode in 200..299
         } catch (e: Exception) {
             e.printStackTrace()
-            return@withContext false
+            false
+        } finally {
+            connection?.disconnect()
         }
     }
 
     suspend fun restoreFromNextcloud(): Boolean = withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
         try {
-            var rawUrl = prefs.getNextcloudUrl().trim()
-            if (!rawUrl.endsWith("/")) rawUrl += "/"
-            val targetUrl = URL("${rawUrl}remote.php/webdav/follia_backup.json")
-
-            val connection = targetUrl.openConnection() as HttpURLConnection
+            connection = openNextcloudConnection() ?: return@withContext false
             connection.requestMethod = "GET"
 
-            val auth = "${prefs.getNextcloudUser()}:${prefs.getNextcloudPassword()}"
-            val encodedAuth = Base64.encodeToString(auth.toByteArray(), Base64.NO_WRAP)
-            connection.setRequestProperty("Authorization", "Basic ${encodedAuth.trim()}")
+            if (connection.responseCode !in 200..299) return@withContext false
 
-            if (connection.responseCode in 200..299) {
-                val jsonResponse = connection.inputStream.bufferedReader().use { it.readText() }
-                return@withContext restoreFromJsonString(jsonResponse)
-            }
-            return@withContext false
+            val jsonResponse = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            restoreFromJsonString(jsonResponse)
         } catch (e: Exception) {
             e.printStackTrace()
-            return@withContext false
+            false
+        } finally {
+            connection?.disconnect()
         }
+    }
+
+    /**
+     * Ouvre une connexion authentifiée vers le fichier de sauvegarde.
+     * Retourne null si l'URL n'est pas en HTTPS : les identifiants (Basic Auth)
+     * ne doivent jamais circuler en clair.
+     */
+    private fun openNextcloudConnection(): HttpURLConnection? {
+        val baseUrl = prefs.getNextcloudUrl().trim().trimEnd('/')
+        if (!baseUrl.startsWith("https://", ignoreCase = true)) return null
+
+        val connection = URL("$baseUrl/remote.php/webdav/$BACKUP_FILE_NAME").openConnection() as HttpURLConnection
+        connection.connectTimeout = TIMEOUT_MS
+        connection.readTimeout = TIMEOUT_MS
+
+        val credentials = "${prefs.getNextcloudUser()}:${prefs.getNextcloudPassword()}"
+        val encoded = Base64.encodeToString(credentials.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        connection.setRequestProperty("Authorization", "Basic $encoded")
+        return connection
+    }
+
+    private companion object {
+        const val BACKUP_FILE_NAME = "follia_backup.json"
+        const val TIMEOUT_MS = 20_000
     }
 }

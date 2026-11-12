@@ -13,7 +13,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class Message(val text: String, val isUser: Boolean)
+/**
+ * [errorDetail] non nul : la réponse a été interrompue (serveur injoignable, coupure...).
+ * Le libellé traduit est affiché par l'interface ; il n'est jamais envoyé au modèle.
+ */
+data class Message(val text: String, val isUser: Boolean, val errorDetail: String? = null)
 
 class ChatViewModel(
     private val chatDao: ChatDao,
@@ -117,10 +121,7 @@ class ChatViewModel(
         if (ipAddress.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val cleanIp = ipAddress.trim()
-                val cleanPort = port.trim().ifBlank { "11434" }
-                val formattedIp = if (cleanIp.contains(":")) "[$cleanIp]" else cleanIp
-                val tagsUrl = "http://$formattedIp:$cleanPort/api/tags"
+                val tagsUrl = "${buildOllamaBaseUrl(ipAddress, port)}api/tags"
 
                 val tagsResponse = RetrofitInstance.api.getModels(tagsUrl)
                 val modelNames = tagsResponse.models.map { it.name }
@@ -145,7 +146,7 @@ class ChatViewModel(
         ttsManager.stop()
 
         messages.add(Message(text = userText, isUser = true))
-        messages.add(Message(text = "...", isUser = false))
+        messages.add(Message(text = PENDING_TEXT, isUser = false))
         val messageIndex = messages.lastIndex
 
         backgroundScope.launch {
@@ -166,15 +167,13 @@ class ChatViewModel(
 
                 chatDao.insertMessage(MessageEntity(conversationId = convId, text = userText, isUser = true))
 
-                val cleanIp = ipAddress.trim()
-                val cleanPort = port.trim().ifBlank { "11434" }
-                val formattedIp = if (cleanIp.contains(":")) "[$cleanIp]" else cleanIp
-                val baseUrl = "http://$formattedIp:$cleanPort/"
+                val baseUrl = buildOllamaBaseUrl(ipAddress, port)
                 val chatUrl = "${baseUrl}api/chat"
                 val targetModel = selectedModel.value.ifBlank { "llama3" }
 
+                // Les réponses en erreur sans contenu ne font pas partie de l'historique envoyé au modèle
                 val chatHistory = messages.take(messageIndex).filter {
-                    !it.text.startsWith("❌ Erreur") && !it.text.startsWith("[Erreur")
+                    it.text.isNotBlank() && !(it.errorDetail != null && it.text == PENDING_TEXT)
                 }.map {
                     OllamaChatMessage(role = if (it.isUser) "user" else "assistant", content = it.text)
                 }
@@ -223,8 +222,9 @@ class ChatViewModel(
                 withContext(Dispatchers.Main) {
                     if (messages.size > messageIndex) {
                         messages[messageIndex] = Message(
-                            text = fullText + "\n[Erreur ou coupure : ${e.message}]",
-                            isUser = false
+                            text = fullText,
+                            isUser = false,
+                            errorDetail = e.message.orEmpty()
                         )
                     }
                 }
@@ -239,6 +239,8 @@ class ChatViewModel(
         }
     }
 }
+
+private const val PENDING_TEXT = "..."
 
 class ChatViewModelFactory(
     private val chatDao: ChatDao,

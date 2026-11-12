@@ -73,5 +73,21 @@
     <string name="update_whats_new">What\'s new:</string>
     <string name="update_download">Download</string>
     <string name="update_later">Later</string>
-    <string name="support_kofi">☕ Support on Ko-fi</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="privacy_policy_url">https://iamtheamn.github.io/FolliA-website/privacy.html</string>
+    <string name="stt_section_title">Offline voice dictation</string>
+    <string name="stt_section_desc">Speech recognition runs entirely on your phone, with no Google service and no connection. Download your language model once (provided by the open-source Vosk project).</string>
+    <string name="stt_download">Download (%1$d MB)</string>
+    <string name="stt_installed">Installed</string>
+    <string name="stt_download_failed">❌ Download failed. Check your connection and try again.</string>
+    <string name="stt_model_missing">First download the dictation model in Settings &gt; Voice.</string>
+    <string name="stt_model_load_error">Could not load the dictation model. Delete it and download it again.</string>
+    <string name="stt_error_audio">The microphone is unavailable.</string>
+    <string name="voice_panel_title">FolliA Voice</string>
+    <string name="voice_status_listening">FolliA is listening…</string>
+    <string name="voice_status_answering">FolliA is answering…</string>
+    <string name="voice_status_connecting">Connecting…</string>
+    <string name="chat_error_generic">Answer interrupted: the server cannot be reached.</string>
+    <string name="chat_error_with_detail">Answer interrupted: %1$s</string>
+    <string name="tts_no_engine">No text-to-speech engine is installed, so reading aloud is turned off. Install one from your app store, then select it in the system voices.</string>
 </resources>
